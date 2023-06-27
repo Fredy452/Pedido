@@ -19,8 +19,12 @@ use Filament\Forms\Components\Select;
 // Section
 use Filament\Forms\Components\Section;
 use Icetalker\FilamentStepper\Forms\Components\Stepper;
+use Icetalker\FilamentTableRepeater\Forms\Components\TableRepeater;
 
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Placeholder;
+
+
 class PedidoResource extends Resource
 {
     protected static ?string $model = Pedido::class;
@@ -29,6 +33,7 @@ class PedidoResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $total_venta = 0;
         return $form
             ->schema([
 
@@ -52,10 +57,19 @@ class PedidoResource extends Resource
                         Forms\Components\Select::make('estado_pedidos_id')
                         ->relationship('estado_pedidos', 'nombre')->default('pendiente')->default(1)
                         ->label('Estado'),
-                    Forms\Components\TextInput::make('total_venta')//Quiero guaradar en este la suma de todas las ventas
-                        ->reactive(),
-                ]),
-
+                        Forms\Components\TextInput::make('total_venta')
+                        ->disabled(),
+                        Placeholder::make('total')//how to add styles in tha component
+                        ->reactive()
+                        ->content(function ($get, $set) {
+                            $sum = 0;
+                            foreach ($get('productos') as $product) {
+                            $sum = $sum + ($product['precio'] * $product['cantidad']);
+                            }
+                            $set('total_venta', $sum);
+                            return $sum ;
+                        })
+                        ->extraAttributes(['class' => 'text-red-500 text-3xl']),
                 Section::make('Productos')
                 ->description('Agregar productos')
                 ->collapsible()
@@ -72,7 +86,7 @@ class PedidoResource extends Resource
                                     ->reactive()
                                     ->afterStateUpdated(function ($state, callable $set,callable $get) {
                                         $set('precio', Producto::find($state)?->precio ?? 0);
-                                        $set('subtotal', $state * $get('precio'));
+                                        $set('subtotal', Producto::find($state)?->precio ?? 0);
                                     })
                                     ->columnSpan([
                                         'md' => 4,
@@ -100,20 +114,13 @@ class PedidoResource extends Resource
                                     ]),
                                     Forms\Components\TextInput::make('subtotal')
                                     ->label('Subtotal')
-                                    ->disabled()
+                                    ->reactive()
                                     ->numeric()
                                     ->required()
                                     ->columnSpan([
                                         'md' => 2,
                                     ]),
                             ])
-                            // ->afterStateUpdated(function ($state, callable $set) {
-                            //     $total_venta = 0;
-                            //     foreach ($this->state('productos') as $producto) {
-                            //         $total_venta += $producto['subtotal'];
-                            //     }
-                            //     $this->state(['total_venta' => $total_venta]);
-                            // })
                             ->orderable()
                             ->defaultItems(1)
                             ->disableLabel()
@@ -121,7 +128,8 @@ class PedidoResource extends Resource
                                 'md' => 10,
                             ])
                             ->required(),
-                ])
+                            ])
+        ]),
             ]);
     }
 
@@ -129,7 +137,11 @@ class PedidoResource extends Resource
     {
         return $table
             ->columns([
-                //
+                Tables\Columns\TextColumn::make('numero_factura')->label('N°')->searchable(),
+                Tables\Columns\TextColumn::make('estado_pedidos.nombre')->label('Estado'),
+                Tables\Columns\TextColumn::make('users.name')->label('Vendedor'),
+                Tables\Columns\TextColumn::make('clientes.nombre'),
+                Tables\Columns\TextColumn::make('total_venta'),
             ])
             ->filters([
                 Tables\Filters\TrashedFilter::make(),

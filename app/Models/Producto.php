@@ -24,4 +24,8 @@ class Producto extends Model
         'unidades_caja',
         'categoria_productos_id'
     ];
+
+    public function pedido() {
+        return $this->belongsTo(Pedido::class);
+    }
 }
